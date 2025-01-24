@@ -1,29 +1,5 @@
 <?php
 
-add_action("wp_enqueue_scripts", "hello_elementor_child_style");
-function hello_elementor_child_style()
-{
-    wp_enqueue_style(
-        "parent-style",
-        get_template_directory_uri() . "/style.css"
-    );
-    wp_enqueue_style(
-        "child-style",
-        get_stylesheet_directory_uri() . "/style.css",
-        ["parent-style"]
-    );
-    wp_enqueue_script(
-        "custom-script",
-        get_stylesheet_directory_uri() . "/custom-script.js",
-        [],
-        rand(1, 100),
-        true
-    );
-}
-
-/**
- * Your code goes below.
-*/
 
 class CustomUserRegistration {
     public function __construct() {
@@ -297,43 +273,3 @@ class CustomUserLogin {
 }
 
 new CustomUserLogin();
-
-
-// Hide admin bar for non-admin users
-add_action("after_setup_theme", "remove_admin_bar");
-function remove_admin_bar() {
-    if (!current_user_can("administrator") && !is_admin()):
-        show_admin_bar(false);
-    endif;
-}
-
-// Shortcode for login/logout toggle button
-function login_toggle_shortcode() {
-    if (is_user_logged_in()) :
-        $logout_url = wp_logout_url(home_url());
-        return '<a href="' . $logout_url . '" class="logout-btn">Logout</a>';
-    else:
-        $login_url = "/wordpress/login-2/";
-        $signup_url = "/wordpress/sign-up/";
-
-        return '<a href="' . $signup_url . '" class="signup">Sign Up</a>
-                <a href="' . $login_url . '" class="login-btn">Login</a>';
-    endif;
-}
-
- add_shortcode("login_toggle", "login_toggle_shortcode");
-
-
- 
-
-// function init() {
-//     echo __('hello world', 'hello-elementor-child');
-
-// }
-// add_action('init', 'init');
-
-// function debug_textdomain_loading() {
-//     load_child_theme_textdomain('hello-elementor-child', get_stylesheet_directory() . '/languages');
-    
-// }
-// add_action('after_setup_theme', 'debug_textdomain_loading');
