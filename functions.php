@@ -14,7 +14,7 @@ function hello_elementor_child_style()
     );
     wp_enqueue_script(
         "custom-script",
-        get_stylesheet_directory_uri() . "/custom-script.js",
+        get_stylesheet_directory_uri() . "/js/custom-script.js",
         [],
         rand(1, 100),
         true

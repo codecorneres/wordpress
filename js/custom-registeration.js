@@ -1,4 +1,5 @@
 
+
 document.getElementById('custom-registration-form').addEventListener('submit', function(event) {
     let isValid = true;
     const fields = [
@@ -22,36 +23,43 @@ document.getElementById('custom-registration-form').addEventListener('submit', f
     if (!isValid) event.preventDefault();
 });
 
+
 ['first_name', 'last_name', 'phone', 'address', 'email'].forEach(id => {
     document.getElementById(id).addEventListener('input', function() {
         document.getElementById(`${id}_error`).textContent = '';
     });
 });
 
+jQuery(document).ready(function (jQuery) {
+    jQuery("#custom-registration-form").on("submit", function (e) {
+        e.preventDefault();
+
+        let formData = {
+            action: "handle_registration",
+        };
+
+        jQuery(this).serializeArray().forEach((field) => {
+            formData[field.name] = field.value;
+        });
+
+        jQuery.ajax({
+            url: ajaxurl, 
+            method: "POST", 
+            data: formData, 
+            dataType: "json",
+            success: function (response) {
+                let messageBox = jQuery("#registration-response");
+                messageBox.removeClass().addClass(response.success ? "success" : "error");
+                messageBox.text(response.data.message);
+            },
+            error: function ( textStatus, errorThrown) {
+                let messageBox = jQuery("#registration-response");
+                messageBox.removeClass().addClass("error");
+                messageBox.text("An error occurred: " + textStatus + ". Please try again.");
+                console.error("Error details:", errorThrown);
+            },
+        });
+    });
+});
 
 
-function validateLoginForm() {
-    let isValid = true;
-
-    // Clear any previous error messages
-    document.getElementById('log_error').textContent = '';
-    document.getElementById('pwd_error').textContent = '';
-
-    // Get input values
-    const usernameOrEmail = document.getElementById('log').value.trim();
-    const password = document.getElementById('pwd').value.trim();
-
-    // Validate Username or Email field
-    if (!usernameOrEmail) {
-        document.getElementById('log_error').textContent = 'Username or Email is required.';
-        isValid = false;
-    }
-
-    // Validate Password field
-    if (!password) {
-        document.getElementById('pwd_error').textContent = 'Password is required.';
-        isValid = false;
-    }
-
-    return isValid;
-}

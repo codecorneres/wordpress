@@ -7,7 +7,7 @@
     </p>
     <?php unset($_SESSION["custom_registration_message"], $_SESSION["custom_registration_message_type"]); ?>
     <?php endif; ?>
-
+    <div id="registration-response"></div>
     <?php $this->render_input_field('first_name', 'First Name', 'text'); ?>
     <?php $this->render_input_field('last_name', 'Last Name', 'text'); ?>
     <?php $this->render_input_field('phone', 'Phone Number', 'tel', ['maxlength' => 10]); ?>

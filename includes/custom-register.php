@@ -2,24 +2,27 @@
 class CustomUserRegistration {
     public function __construct() {
         add_shortcode("custom_user_registration", [$this, "render_registration_form"]);
-        add_action("init", [$this, "handle_registration"]);
+        add_action("wp_ajax_nopriv_handle_registration", [$this, "handle_registration"]);
         add_filter('wp_authenticate_user', [$this, "check_user_account_status"], 10, 1);
         add_filter('manage_users_columns', [$this, "add_account_status_column"]);
         add_action('manage_users_custom_column', [$this, "show_account_status_column"], 10, 3);
         add_action('admin_init', [$this, "handle_account_status_action"]);
+        add_action("wp_enqueue_scripts", [$this, "enqueue_scripts"]);
+    }
+
+    public function enqueue_scripts() {
+        wp_enqueue_script('custom-registration-script', get_stylesheet_directory_uri() . '/js/custom-registeration.js', ['jquery'], null, true);
+        wp_localize_script('custom-registration-script', 'ajaxurl', admin_url('admin-ajax.php'));
     }
 
     public function render_registration_form() {
         if (is_user_logged_in()) :
             return "<p>You are already logged in.</p>";
         endif;
-        //include register form
-        include get_stylesheet_directory() . '/forms/custom-register-form.php';
-        return;
+    include get_stylesheet_directory() . '/forms/custom-register-form.php';
     }
 
     public function render_input_field($name, $label, $type, $attributes = []) {
-        $value = isset($_POST[$name]) ? $_POST[$name] : '';
         $additional_attrs = '';
         foreach ($attributes as $key => $val) {
             $additional_attrs .= "$key={$val}";
@@ -27,47 +30,36 @@ class CustomUserRegistration {
         ?>
 <p>
     <label for="<?php echo $name; ?>"><?php echo $label; ?></label><span>*</span>
-    <input type="<?php echo $type; ?>" name="<?php echo $name; ?>" id="<?php echo $name; ?>"
-        value="<?php echo $value; ?>" class="input-field" <?php echo $additional_attrs; ?>>
+    <input type="<?php echo $type; ?>" name="<?php echo $name; ?>" id="<?php echo $name; ?>" class="input-field"
+        <?php echo $additional_attrs; ?>>
     <span class="error-message" id="<?php echo $name . '_error'; ?>"></span>
 </p>
 <?php
     }
 
     public function handle_registration() {
-        if (!isset($_POST["submit_registration"])) {
-            return;
-        }
 
-        session_start();
         $email = $_POST["email"];
         $first_name = $_POST["first_name"];
         $last_name = $_POST["last_name"];
         $phone = $_POST["phone"];
         $address = $_POST["address"];
 
-        if (!is_email($email)) :
-            $this->set_session_message("Invalid email address.", "error text-danger");
-            return;
+        if (empty($first_name) || empty($last_name) || empty($address) || !is_email($email) || !preg_match('/^\d{10}$/', $phone)
+        ) :
+            wp_send_json_error(['message' => 'All Fields Are Required']);
+         endif;
+        if(email_exists($email)):
+            wp_send_json_error(['message'=>'Email is Already Exist.']);
         endif;
-
-        if (email_exists($email)) :
-            $this->set_session_message("Email already exists.", "error text-danger");
-            return;
-        endif;
-
-        if (!preg_match('/^\d{10}$/', $phone)) :
-            $this->set_session_message("Invalid phone number. Please enter a 10-digit phone number.", "error text-danger");
-            return;
-        endif;
+        
 
         $username = explode("@", $email)[0];
         $password = wp_generate_password(12, true);
         $user_id = wp_create_user($username, $password, $email);
 
         if (is_wp_error($user_id)) :
-            $this->set_session_message("Error creating user: " . $user_id->get_error_message(), "error text-danger");
-            return;
+            wp_send_json_error(['message' => "Error creating user: " . $user_id->get_error_message()]);
         endif;
 
         update_user_meta($user_id, "first_name", $first_name);
@@ -80,33 +72,23 @@ class CustomUserRegistration {
         $this->notify_admin($first_name, $last_name, $email);
         $this->notify_user($email, $username, $password);
 
-        $this->set_session_message("Registration successful! Your account is pending approval by the admin.", "success text-success");
-    }
-
-    public function set_session_message($message, $type) {
-        $_SESSION["custom_registration_message"] = $message;
-        $_SESSION["custom_registration_message_type"] = $type;
+        wp_send_json_success(['message' => "Registration successful! Your account is pending admin approval."]);
     }
 
     public function notify_admin($first_name, $last_name, $email) {
         $admin_email = get_option('admin_email');
         $subject = "New User Registration Pending Approval";
-        $message = "A new user has registered and is awaiting approval.\n\n";
-        $message .= "Name: $first_name $last_name\n";
-        $message .= "Email: $email\n\n";
-        $message .= "Approve or reject the user in the admin panel.";
+        $message = "A new user has registered and is awaiting approval.\n\nName: $first_name $last_name\nEmail: $email\n\nApprove or reject the user in the admin panel.";
         wp_mail($admin_email, $subject, $message);
     }
 
     public function notify_user($email, $username, $password) {
         $subject = "Your account is pending approval";
-        $message = "Your account is pending approval. Please wait for the admin to approve your account.\n\n";
-        $message .= "Username: $username\n";
-        $message .= "Password: $password\n";
+        $message = "Your account is pending approval. Please wait for the admin to approve your account.\n\nUsername: $username\nPassword: $password\n";
         wp_mail($email, $subject, $message);
     }
 
-    public function check_user_account_status($user) {
+   public function check_user_account_status($user) {
         if (is_wp_error($user)) :
             return $user;
         endif;
